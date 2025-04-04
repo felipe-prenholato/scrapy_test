@@ -1,0 +1,50 @@
+services:
+  app:
+    build: .
+    container_name: scrapy_test
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_started
+    environment:
+      - POSTGRES_URL=postgresql+psycopg://dev:dev@postgres/stock_db
+      - REDIS_URL=redis://redis:6379/0
+      - STOCK_CACHE_EXPIRATION=86400
+      # set polygon api key here, then run make up.
+      - POLYGON_API_KEY=
+    volumes:
+      - "./src/:/src"
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: stock_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./data/postgres:/var/lib/postgresql/data"
+    # You may want to change this to your user id. 1000 is usually reserved for the first user created in linux systems.
+    user: "1000:1000"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  redis:
+    image: redis:latest
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - "./data/redis:/data"
+    # You may want to change this to your user id. 1000 is usually reserved for the first user created in linux systems.
+    user: "1000:1000"
